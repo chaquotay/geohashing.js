@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <script src="js/bootstrap.min.js" language="JavaScript"></script>
+    <script src="js/md5.js" language="javascript"></script>
+    <script src="js/geohashing.js" language="javascript"></script>
+
+    <link rel="stylesheet" href="css/bootstrap.min.css" type="text/css"/>
+
+    <link rel="stylesheet" href="css/geohashing.css" type="text/css"/>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>
+
+    <title>JeohaSing</title>
+    <style type="text/css">
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+
+    </style>
+    <script language="JavaScript">
+        function toDMS(coordinate) {
+            // https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+            // TODO: N E S W!
+
+            var degrees = Math.floor(coordinate);
+            var minutes = Math.floor(60 * (coordinate - degrees));
+            var seconds = Math.floor(3600 * (coordinate - degrees - minutes / 60));
+
+            return degrees + "° " + minutes + "' " + seconds + '"';
+        }
+
+        function calc() {
+            var startLat = parseInt(document.getElementById("lat").value);
+            var startLon = parseInt(document.getElementById("lon").value);
+            var dateString = document.getElementById("date").value;
+            var date = new Date(dateString);
+            var dow = parseFloat(document.getElementById("dow").value);
+
+            var gh = new GeoHashing(startLat, startLon);
+
+            var coordinates = gh.calculate(date, dow);
+
+            var text = coordinates.latitude + " " + coordinates.longitude; // + " / " + toDMS(coordinates.latitude) + " " + toDMS(coordinates.longitude);
+            document.getElementById("geohash-coordinates").value = text;
+
+            var links = [
+                {id: 'link-open-osm', linkFormat: "http://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=13"},
+                {
+                    id: 'link-open-google-maps',
+                    linkFormat: "http://maps.google.com/maps?q=${lat},${lon}&ll=${lat},${lon}&z=13"
+                }
+            ];
+
+            for (var i in links) {
+                var linkId = links[i].id;
+                var linkFormat = links[i].linkFormat;
+                var linkHref = linkFormat.replace(/\$\{lat\}/g, coordinates.latitude).replace(/\$\{lon\}/g, coordinates.longitude)
+                document.getElementById(linkId).href = linkHref;
+            }
+
+            var link = document.getElementById("link-poster");
+            link.href = "http://geo.crox.net/poster/" + dateString + "_" + startLat + "_" + startLon;
+
+            document.getElementById("links").style.visibility = "visible";
+
+            document.getElementById("gh-step-seed").innerText=coordinates.seed;
+            document.getElementById("gh-step-hash").innerText=coordinates.hash;
+            document.getElementById("gh-step-hash1").innerText=coordinates.hexLatitude;
+            document.getElementById("gh-step-hash2").innerText=coordinates.hexLongitude;
+            document.getElementById("gh-step-dec1").innerText=coordinates.decimalLatitude+"...";
+            document.getElementById("gh-step-dec2").innerText=coordinates.decimalLongitude+"...";
+            document.getElementById("gh-step-lat1").innerText=startLat;
+            document.getElementById("gh-step-lat2").innerText="."+coordinates.decimalLatitude;
+            document.getElementById("gh-step-lon1").innerText=startLon;
+            document.getElementById("gh-step-lon2").innerText="."+coordinates.decimalLongitude;
+
+            map.setView([coordinates.latitude, coordinates.longitude], 13);
+
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            marker = L.marker([coordinates.latitude, coordinates.longitude]);
+            marker.addTo(map);
+            marker.bindPopup(coordinates.latitude + " " + coordinates.longitude).openPopup();
+        }
+
+        function init() {
+            setToday();
+            document.getElementById("btn-calculate").onclick = calc;
+            document.getElementById("btn-set-current-position").onclick = loadCurrentPosition;
+            document.getElementById("btn-set-today").onclick = setToday;
+
+            loadCurrentPosition();
+
+            marker = null;
+        }
+
+        function loadCurrentPosition() {
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                setCoords((pos.coords.latitude), (pos.coords.longitude));
+            }, function () {
+            });
+        }
+
+        function setCoords(lat, lon) {
+            document.getElementById("lat").value = lat;
+            document.getElementById("lon").value = lon;
+            map.setView([lat, lon], 13);
+            L.marker([lat, lon]).addTo(map);
+        }
+
+        function setToday() {
+            document.getElementById("date").value = new Date().toDateInputValue();
+        }
+
+        function loadXkcValues() {
+            document.getElementById("date").value = "2005-05-26";
+            setCoords(37.421542, -122.085589);
+            document.getElementById("dow").value = 10458.68;
+        }
+
+        // http://stackoverflow.com/a/13052187
+        Date.prototype.toDateInputValue = (function () {
+            var local = new Date(this);
+            local.setMinutes(this.getMinutes() - this.getTimezoneOffset());
+            return local.toJSON().slice(0, 10);
+        });
+    </script>
+</head>
+<body onload="init()">
+
+<div class="container">
+    <div class="page-header">
+        <ul class="nav nav-pills pull-right">
+            <li>
+                <script>
+                    <!--
+                    document.write('<a href="');
+                    document.write('mailto:stephan@notatoaster.org');
+                    document.write('">Contact</a>');
+                    -->
+                </script>
+            </li>
+        </ul>
+
+        <h1>Geo Hashing</h1>
+
+    </div>
+
+    <form class="form-horizontal" role="form" name="calc" id="calc">
+        <div class="form-group">
+            <label class="col-sm-2 control-label col-sm-offset-2">Start location</label>
+
+            <div class="col-sm-2">
+                <input type="number" class="form-control" id="lat" placeholder="Latitude" required>
+            </div>
+
+            <div class="col-sm-2">
+                <input type="number" class="form-control" id="lon" placeholder="Longitude">
+            </div>
+
+            <button id="btn-set-current-position" class="btn btn-default" type="button">Current position</button>
+        </div>
+
+        <div class="form-group">
+            <label for="date" class="col-sm-2 control-label col-sm-offset-2">Date</label>
+
+            <div class="col-sm-4">
+                <input type="date" class="form-control" id="date" placeholder="Date">
+            </div>
+            <button id="btn-set-today" class="btn btn-default" type="button">Today</button>
+        </div>
+
+        <div class="form-group">
+            <label for="dow" class="col-sm-2 control-label col-sm-offset-2">Dow</label>
+
+            <div class="col-sm-4">
+                <input type="number" class="form-control" id="dow" placeholder="Dow">
+            </div>
+            <button id="btn-fetch-dow" class="btn btn-default" type="button" disabled>Fetch relevant Dow opening
+            </button>
+        </div>
+
+        <div class="form-group">
+            <div class="col-sm-2 col-sm-offset-4">
+                <button id="btn-calculate" type="button" class="btn btn-primary">Geohash!</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-sm-4 col-sm-offset-4">
+                <!-- <button id="btn-load-xkcd" type="button" class="btn btn-default">xkcd values</button>-->
+                <a href="javascript:loadXkcValues()">Load values from the original xkcd comic</a>
+            </div>
+        </div>
+
+    </form>
+
+    <hr>
+
+    <form class="form-horizontal" role="form" name="result" id="result">
+        <div class="form-group">
+            <label for="geohash-coordinates" class="col-sm-4 control-label col-sm-offset-0">Resulting geohashing
+                coordinates</label>
+
+            <div class="col-sm-4">
+                <input type="text" class="form-control" id="geohash-coordinates" style="cursor: text" placeholder=""
+                       readonly>
+            </div>
+            <div id="links" style="visibility: hidden" class="col-sm-4">
+                <ul>
+                    <li><a id="link-open-osm" target="_blank">Open in OSM</a></li>
+                    <li><a id="link-open-google-maps" target="_blank">Open in Google Maps</a></li>
+                    <li><a id="link-poster" target="_blank">Poster</a></li>
+                </ul>
+            </div>
+        </div>
+    </form>
+
+    <hr>
+
+    <div class="row">
+        <div class="col-sm-8 col-sm-offset-2">
+
+            The steps of the <a href="http://wiki.xkcd.com/geohashing/The_Algorithm" target="_blank">geo hashing
+            algorithm</a>:
+            <div id="log">
+                <ol>
+                    <li>Concatenate the date and that date's (or most recent) Dow opening into one string: <em id="gh-step-seed">2005-05-26-10458.68</em></li>
+                    <li>Hash it with MD5: <em id="gh-step-hash">db9318c2259923d08b672cb305440f97</em></li>
+                    <li>Split the hash into two parts: 0.<em id="gh-step-hash1">db9318c2259923d0</em> and 0.<em id="gh-step-hash2">8b672cb305440f97</em></li>
+                    <li>Convert the parts to decimal: 0.<em id="gh-step-dec1">857713...</em> and 0.<em id="gh-step-dec2">544543...</em></li>
+                    <li>Combine the decimals with the given graticule : <em id="gh-step-lat1">37</em><em id="gh-step-lat2">.857713</em>&nbsp;&nbsp;&nbsp;<em id="gh-step-lon1">-122</em><em id="gh-step-lon2">.544543</em></li>
+                </ol>
+
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row">
+        <div id="map" class="col-sm-8 col-sm-offset-2" style="height: 500px; width: 66%;"></div>
+
+        <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+        <script language="javascript">
+            map = L.map('map').setView([51.505, -0.09], 13);
+
+            L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
+                maxZoom: 18,
+                attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+                '<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+                'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+                id: 'examples.map-i875mjb7'
+            }).addTo(map);
+        </script>
+    </div>
+
+    <hr>
+
+    <div class="col-sm-12" style="opacity: 0.5;">
+        Built using <a href="http://getbootstrap.com/">Bootstrap</a> (<a href="https://github.com/twbs/bootstrap/blob/master/LICENSE">LICENSE</a>),
+            <a href="https://code.google.com/p/crypto-js/">CryptoJS</a> (<a href="https://code.google.com/p/crypto-js/wiki/License">LICENSE</a>)
+            and <a href="http://leafletjs.com/">Leaflet</a> (<a href="https://github.com/Leaflet/Leaflet/blob/master/LICENSE">LICENSE</a>)
+        </ul>
+    </div>
+</div>
+</body>
+</html>

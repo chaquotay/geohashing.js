@@ -1,0 +1,9 @@
+#log em {
+    border: solid 2px red;
+    padding: 2px;
+    margin-right: 1px;
+}
+
+#log li {
+    line-height: 200%;
+}
