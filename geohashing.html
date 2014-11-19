@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <script src="js/bootstrap.min.js" language="JavaScript"></script>
     <script src="js/md5.js" language="javascript"></script>
+    <script src="js/date.js" language="javascript"></script>
     <script src="js/geohashing.js" language="javascript"></script>
 
     <link rel="stylesheet" href="css/bootstrap.min.css" type="text/css"/>
@@ -92,6 +93,7 @@
             document.getElementById("btn-calculate").onclick = calc;
             document.getElementById("btn-set-current-position").onclick = loadCurrentPosition;
             document.getElementById("btn-set-today").onclick = setToday;
+            document.getElementById("btn-fetch-dow").onclick = fetchDow;
 
             loadCurrentPosition();
 
@@ -122,12 +124,36 @@
             document.getElementById("dow").value = 10458.68;
         }
 
-        // http://stackoverflow.com/a/13052187
-        Date.prototype.toDateInputValue = (function () {
-            var local = new Date(this);
-            local.setMinutes(this.getMinutes() - this.getTimezoneOffset());
-            return local.toJSON().slice(0, 10);
-        });
+        function fetchDow() {
+            var dateString = document.getElementById("date").value;
+            var date = new Date(dateString);
+
+            var startLon = parseInt(document.getElementById("lon").value);
+            if(startLon>-30) { // http://wiki.xkcd.com/geohashing/30W_Time_Zone_Rule
+                date = date.addDays(-1);
+            }
+
+            var http_request = {};
+            if (window.XMLHttpRequest) { // Mozilla, Safari, ...
+                http_request = new XMLHttpRequest();
+            } else if (window.ActiveXObject) { // IE
+                http_request = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+
+            http_request.onreadystatechange = function(){
+                handleDow(http_request);
+            };
+
+            http_request.open('GET', 'djia/'+date.toHyphenedString(), true);
+            http_request.send(null);
+        }
+
+        function handleDow(http_request) {
+            if(http_request.readyState == 4) {
+                var x = parseFloat(http_request.responseText);
+                document.getElementById("dow").value = x;
+            }
+        }
     </script>
 </head>
 <body onload="init()">
@@ -180,7 +206,7 @@
             <div class="col-sm-4">
                 <input type="number" class="form-control" id="dow" placeholder="Dow">
             </div>
-            <button id="btn-fetch-dow" class="btn btn-default" type="button" disabled>Fetch relevant Dow opening
+            <button id="btn-fetch-dow" class="btn btn-default" type="button">Fetch relevant Dow opening
             </button>
         </div>
 

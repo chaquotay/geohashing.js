@@ -6,14 +6,6 @@ function GeoHashing(latStart, lonStart){
     var m = this;
     var fixedLen = 6;
 
-    var lpad = function(value, padding, len) {
-        var text = value.toString();
-        while(text.length < len) {
-            text = padding + text;
-        }
-        return text;
-    };
-
     var parseHexFraction = function(str)
     {
         // Based on idea from http://stackoverflow.com/a/5055819
@@ -23,11 +15,8 @@ function GeoHashing(latStart, lonStart){
 
     m.calculate = function(date, dow){
         var result = {};
-        var year = date.getFullYear().toString();
-        var month = lpad((date.getMonth()+1).toString(), '0', 2);
-        var day = lpad(date.getDate().toString(), '0', 2);
         var dowText = dow.toFixed(2).toString();
-        var text = [year, month, day, dowText].join('-');
+        var text = date.toHyphenedString() + "-" + dowText;
         result.seed = text;
         var hash = result.hash = CryptoJS.MD5(result.seed).toString(); // TODO: what is the real return type?!?
         var hexLat = hash.substr(0, 16);
